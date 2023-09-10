@@ -123,7 +123,7 @@ class FetchSubmission:
                 # write to file
                 file_path = os.path.join(self.save_dir, f'{self.ticker}.txt')
                 # 'w' mode will create the file if it doesn't exist, and truncate if it does
-                with open(file_path, 'w') as f:
+                with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(item1)
         else:
             logger.warning("API call faild after max retry")
@@ -137,7 +137,6 @@ def fetch_10k_item1(tickers: List[str]) -> None:
     for ticker in tickers:
         fetch_submission = FetchSubmission(ticker)
         fetch_submission.fetch_sub_info()
-
 
 def main() -> None:
     """ingest company item 1
@@ -164,8 +163,9 @@ def main() -> None:
     tickers_to_ingest = [
         e.lower().replace('/', '-') for e in target_tickers if e.lower().replace('/', '-') not in ingested_tickers
         ]
-
+    tickers_to_ingest = ['z']
     fetch_10k_item1(tickers_to_ingest)
+
 
 if __name__ == "__main__":
     main()

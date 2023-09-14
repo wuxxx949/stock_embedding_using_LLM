@@ -166,7 +166,12 @@ def fetch_10k(raw_content: str) -> str:
             content = raw_content[doc_start: doc_end]
             break
 
-    return content
+    # find compnay name
+    pattern = r'COMPANY CONFORMED NAME:\s+(.*?)\n'
+    match = re.search(pattern, raw_content)
+    company_name = re.sub(r'\s*$', '', match.group(1)).split(' ')[0]
+
+    return content, company_name
 
 
 def parse_10k_str_match(raw_10k: str) -> Optional[pd.DataFrame]:
@@ -217,7 +222,7 @@ def parse_10k_href(raw_10k: str) -> Optional[pd.DataFrame]:
     """
     regex = re.compile(r'href="#(.*?)"', re.IGNORECASE)
     matches = regex.finditer(raw_10k)
-    hrefs = set(['"' + raw_10k[(x.start() + 7): x.end()] for x in matches])
+    hrefs = {'"' + raw_10k[(x.start() + 7): x.end()] for x in matches}
 
     # item_1_patten = r'i\s?t\s?e\s?m\s?1\s?b\s?u\s?s\s?i\s?n\s?e\s?s\s?s'
     # item_1a_patten = r'i\s?t\s?e\s?m\s?1\s?a\s?r\s?i\s?s\s?k'
@@ -233,17 +238,19 @@ def parse_10k_href(raw_10k: str) -> Optional[pd.DataFrame]:
         except IndexError:
             continue
         # text = BeautifulSoup(raw_10k[(hloc - 500): (hloc + 500)]).get_text(' ')
-        match = re.search(pattern, raw_10k[(hloc + 1): (hloc + 1000)])
-        if match is None:
+        matches = re.findall(pattern, raw_10k[(hloc + 1): (hloc + 1000)])
+        if len(matches) == 0:
             continue
-        text = match.group(1)
-        text = re.sub(r'[^a-zA-Z0-9_ ]', ' ', text).lower()
-        # rm additional whitespace
-        text = re.sub(r' +', ' ', text)
-        if len(re.findall(r'b\s?u\s?s\s?i\s?n\s?e\s?s\s?s', text)) > 0 or len(re.findall(r'i\s?t\s?e\s?m\s?1\s?\b', text)) > 0:
-            pos_lst.append(('item1', hloc + 1))
-        if len(re.findall(r'r\s?i\s?s\s?k\s?f\s?a\s?c\s?t\s?o\s?r\s?', text))> 0 or len(re.findall(r'i\s?t\s?e\s?m\s?1\s?a', text)) > 0:
-            pos_lst.append(('item1a', hloc + 1))
+        for text in matches:
+            text = re.sub(r'[^a-zA-Z0-9_ ]', ' ', text).lower()
+            # rm additional whitespace
+            text = re.sub(r' +', ' ', text)
+            if len(re.findall(r'b\s?u\s?s\s?i\s?n\s?e\s?s\s?s', text)) > 0 or len(re.findall(r'i\s?t\s?e\s?m\s?1\s?\b', text)) > 0:
+                pos_lst.append(('item1', hloc + 1))
+                break
+            if len(re.findall(r'r\s?i\s?s\s?k\s?f\s?a\s?c\s?t\s?o\s?r\s?', text))> 0 or len(re.findall(r'i\s?t\s?e\s?m\s?1\s?a', text)) > 0:
+                pos_lst.append(('item1a', hloc + 1))
+                break
         # if len(re.findall(item_1_patten, text)) > 0 and len(re.findall(item_1a_patten, text)) == 0 and len(re.findall(toc_pattern, text)) == 0:
         #     pos_lst.append(('item1', hloc + 1))
         # if len(re.findall(item_1a_patten, text)) > 0 and len(re.findall(item_1_patten, text)) == 0 and len(re.findall(toc_pattern, text)) == 0:
@@ -273,7 +280,7 @@ def parse_10k(raw_content: str) -> str:
     Args:
         raw_10k (str): raw strings
     """
-    raw_10k = fetch_10k(raw_content)
+    raw_10k, company_name = fetch_10k(raw_content)
 
     # try href first
     pos_dat = parse_10k_href(raw_10k)
@@ -297,7 +304,23 @@ def parse_10k(raw_content: str) -> str:
     # rm repeated words
     item_1_content = re.sub(r'\b(\w+)\s+\1\b', r'\1', item_1_content)
 
-    # rm item 1. business pattern
-    item_1_content = ' '.join(item_1_content.split(' ')[3:])
+    # find true start pos
+    start_pos = 999
+    pos_lst = []
+    match = re.search(company_name, item_1_content, re.IGNORECASE)
+    if match:
+        pos_lst.append(match.span()[0])
+    match = re.search('we', item_1_content, re.IGNORECASE)
+    if match:
+        pos_lst.append(match.span()[0])
+    match = re.search('the company', item_1_content, re.IGNORECASE)
+    if match:
+        pos_lst.append(match.span()[0])
+
+    if len(pos_lst) > 0:
+        start_pos = min(pos_lst)
+
+    if start_pos < 500:
+        item_1_content = item_1_content[start_pos:]
 
     return item_1_content

@@ -291,7 +291,7 @@ def parse_10k(raw_content: str) -> str:
 
     # Apply BeautifulSoup to refine the content
     item_1_content = BeautifulSoup(item_1_content, 'lxml').get_text(' ')
-    item_1_content = re.sub(r'[^a-zA-Z0-9_\s,\.;:-’]', '', item_1_content)
+    item_1_content = re.sub(r'[^a-zA-Z0-9_\s,\.;:\-’]', '', item_1_content)
 
     # rm newline
     item_1_content = re.sub('[\n\xa0]', ' ', item_1_content)

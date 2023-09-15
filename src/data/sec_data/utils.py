@@ -237,12 +237,13 @@ def parse_10k_href(raw_10k: str) -> Optional[pd.DataFrame]:
             hloc = [(x.group(), x.end()) for x in match][0][1]
         except IndexError:
             continue
-        # text = BeautifulSoup(raw_10k[(hloc - 500): (hloc + 500)]).get_text(' ')
-        matches = re.findall(pattern, raw_10k[(hloc + 1): (hloc + 1000)])
+
+        matches = re.findall(pattern, raw_10k[(hloc + 1): (hloc + 2000)])
         if len(matches) == 0:
             continue
         for text in matches:
-            text = re.sub(r'[^a-zA-Z0-9_ ]', ' ', text).lower()
+            text = re.sub('&#160;|&nbsp;|&#xa0;', ' ', text)
+            text = re.sub('[^a-zA-Z0-9_ ]', ' ', text).lower()
             # rm additional whitespace
             text = re.sub(r' +', ' ', text)
             if len(re.findall(r'b\s?u\s?s\s?i\s?n\s?e\s?s\s?s', text)) > 0 or len(re.findall(r'i\s?t\s?e\s?m\s?1\s?\b', text)) > 0:
@@ -251,10 +252,7 @@ def parse_10k_href(raw_10k: str) -> Optional[pd.DataFrame]:
             if len(re.findall(r'r\s?i\s?s\s?k\s?f\s?a\s?c\s?t\s?o\s?r\s?', text))> 0 or len(re.findall(r'i\s?t\s?e\s?m\s?1\s?a', text)) > 0:
                 pos_lst.append(('item1a', hloc + 1))
                 break
-        # if len(re.findall(item_1_patten, text)) > 0 and len(re.findall(item_1a_patten, text)) == 0 and len(re.findall(toc_pattern, text)) == 0:
-        #     pos_lst.append(('item1', hloc + 1))
-        # if len(re.findall(item_1a_patten, text)) > 0 and len(re.findall(item_1_patten, text)) == 0 and len(re.findall(toc_pattern, text)) == 0:
-        #     pos_lst.append(('item1a', hloc + 1))
+
     if len(pos_lst) == 0:
         return None
 

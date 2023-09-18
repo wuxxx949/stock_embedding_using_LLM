@@ -239,6 +239,11 @@ def parse_10k_href(raw_10k: str) -> Optional[pd.DataFrame]:
             continue
 
         matches = re.findall(pattern, raw_10k[(hloc + 1): (hloc + 2000)])
+        # exclude long text so avoid forward-looking statement
+        matches = [e for e in matches if len(e) < 50]
+        # if table of contents has href
+        if any([re.match('^[0-9]$|table of contents', e, re.IGNORECASE) is not None for e in matches]):
+            continue
         if len(matches) == 0:
             continue
         for text in matches:

@@ -2,6 +2,7 @@ import os
 import re
 from typing import Dict, List, Tuple
 
+import numpy as np
 import pandas as pd
 
 from src.meta_data import get_meta_data
@@ -20,7 +21,19 @@ def filter_files(min_kb: int = 10) -> List[str]:
 
     return file_to_use
 
-# model_inputs = tokenizer(sequences, padding="max_length", max_length=8)
+def fetch_tickers() -> List[str]:
+    """fetch tickers with qualified SEC data
+
+    Returns:
+        List[str]: _description_
+    """
+    tickers = []
+    for fpath in filter_files(10):
+        with open (fpath, 'r', encoding='utf8') as f:
+            tickers.append(re.search(r'[^a-z]([a-z]+).txt', fpath).group(1))
+
+    return tickers
+
 def make_gics_look_up() -> Dict[str, str]:
     """make ticker to GICS industry lookup dict
 
@@ -29,12 +42,15 @@ def make_gics_look_up() -> Dict[str, str]:
     """
     d = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     data_dir = os.path.join(d, 'data', 'raw_data')
+    tickers = fetch_tickers()
 
     gics_df = pd.read_csv(
         os.path.join(data_dir, 'ticker_to_gics.csv'),
         names=['ticker', 'gics'],
         dtype={'ticker': str, 'gics': str}
         )
+
+    gics_df = gics_df[gics_df['ticker'].str.lower().isin(tickers)]
 
     gics_df['industry'] = gics_df['gics'].apply(lambda x: x[:6])
     int_mapping = dict(enumerate(set(gics_df['industry'])))

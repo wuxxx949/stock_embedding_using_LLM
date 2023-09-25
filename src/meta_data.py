@@ -11,7 +11,8 @@ def get_meta_data() -> Dict[str, str]:
     """
     meta_data = {
         'SEC_DIR': os.environ['SEC_DIR'], # intermeidate step and output
-        'LOG_DIR': os.environ['LOG_DIR']
+        'LOG_DIR': os.environ['LOG_DIR'],
+        'MODEL_DIR': os.environ['MODEL_DIR']
     }
 
     return meta_data

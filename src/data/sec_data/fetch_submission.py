@@ -163,7 +163,7 @@ def main() -> None:
     tickers_to_ingest = [
         e.lower().replace('/', '-') for e in target_tickers if e.lower().replace('/', '-') not in ingested_tickers
         ]
-    tickers_to_ingest = ['z']
+    # tickers_to_ingest = ['nbhc'] # stag
     fetch_10k_item1(tickers_to_ingest)
 
 

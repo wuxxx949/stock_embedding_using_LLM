@@ -30,6 +30,7 @@ class CustomDataset(Dataset):
 
 def fine_tune_bert(
     test_size: float = 0.2,
+    seed: int = 21,
     lr_freeze: float = 0.01,
     lr_unfreeze: float = 2e-5,
     num_epochs_freeze  = 15,
@@ -42,6 +43,7 @@ def fine_tune_bert(
 
     Args:
         test_size (float): test set size between 0 and 1
+        seed (int): random seed for training test split
         lr_freeze (float, optional): learning rate for step 1. Defaults to 0.01.
         lr_unfreeze (float, optional): learning rate for step 2. Defaults to 2e-5.
         num_epochs_freeze (int, optional): num of epochs for step 1. Defaults to 15.
@@ -51,19 +53,20 @@ def fine_tune_bert(
     Returns:
         BertForSequenceClassification: tuned model
     """
-
     checkpoint = 'bert-base-uncased'
     tokenizer = AutoTokenizer.from_pretrained(checkpoint)
     texts, labels = make_input_data()
 
     if 0 < test_size < 1:
         train_texts, val_texts, train_labels, val_labels = \
-            train_test_split(texts, labels, test_size=test_size, stratify=labels)
+            train_test_split(texts, labels, test_size=test_size, random_state=seed, stratify=labels)
         val_encodings = tokenizer(val_texts, truncation=True, padding=True)
         val_dataset = CustomDataset(val_encodings, val_labels)
     elif test_size == 0:
         train_texts, train_labels = texts, labels
         val_dataset = None
+    else:
+        raise ValueError('test size outside of [0, 1)')
 
     train_encodings = tokenizer(train_texts, truncation=True, padding=True)
     train_dataset = CustomDataset(train_encodings, train_labels)
@@ -125,4 +128,11 @@ def fine_tune_bert(
 
 
 if __name__ == '__main__':
-    tuned_model = fine_tune_bert(save_model=False)
+    tuned_model = fine_tune_bert(save_model=True)
+
+    checkpoint = 'bert-base-uncased'
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+
+    model = AutoModelForSequenceClassification.from_pretrained(
+        get_meta_data()['MODEL_DIR']
+    )

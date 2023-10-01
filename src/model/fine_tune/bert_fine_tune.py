@@ -122,7 +122,7 @@ def fine_tune_bert(
 
     if save_model:
         meta_data = get_meta_data()
-        model.save_pretrained(meta_data['MODEL_DIR'])
+        model.save_pretrained(meta_data['BERT_MODEL_DIR'])
 
     return model
 
@@ -134,5 +134,5 @@ if __name__ == '__main__':
     tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 
     model = AutoModelForSequenceClassification.from_pretrained(
-        get_meta_data()['MODEL_DIR']
+        get_meta_data()['BERT_MODEL_DIR']
     )

@@ -37,7 +37,8 @@ def bert_embedding(
     # labels: List[int],
     chunk_length: int,
     num_seg: int,
-    ncores: Optional[int] = None
+    ncores: Optional[int] = None,
+    embedding_type: str = 'cls'
 ) -> np.array:
     """bert embedding inference
 
@@ -47,6 +48,7 @@ def bert_embedding(
         chunk_length (int): text chunk length
         num_seg (int): number of segments to average over
         ncores (Optional[int], optional): threads for mp. Defaults to None.
+        embedding_type (str): cls or pooler
 
     Returns:
         np.array: embeddings as np.array with shape text_count x dim
@@ -92,9 +94,12 @@ def bert_embedding(
         with torch.no_grad():
             outputs = ft_model(**inputs)
         last_hidden_state, pooler_output = outputs[0], outputs[1]
-        cls_embedding = last_hidden_state[:, 0, :]
+        if embedding_type == 'cls':
+            embedding = last_hidden_state[:, 0, :]
+        else:
+            embedding = pooler_output
         if device.type == 'cuda':
-            embeddings_lst.extend(cls_embedding.cpu().numpy())
+            embeddings_lst.extend(embedding.cpu().numpy())
 
     raw_embeddings = np.vstack(embeddings_lst)
     embeddings = mean_embedding(raw_embeddings, seg_ids)
@@ -116,8 +121,6 @@ def sbert_embedding(
     token = model.tokenize(["Each sentence's converted (except the first one)."])
     token_ids = token['input_ids'][0]
     text = model.tokenizer.decode(token_ids, skip_special_tokens=True)
-
-
 
 
 if __name__ == '__main__':

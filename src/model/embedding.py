@@ -1,27 +1,31 @@
 """make embedings for fine-tuned models
 """
-from typing import List, Tuple
+import multiprocessing as mp
+from functools import reduce
+from typing import List, Optional
 
+import numpy as np
 import torch
+from sentence_transformers import SentenceTransformer
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from src.meta_data import get_meta_data
 from src.model.model_data import make_input_data
+from src.model.utils import mean_embedding, text_segment
 
 
 class CustomDataset(Dataset):
-    def __init__(self, texts, labels):
+    def __init__(self, texts):
         self.texts = texts
-        self.labels = labels
 
     def __len__(self):
         return len(self.texts)
 
     def __getitem__(self, idx):
         text = self.texts[idx]
-        label = self.labels[idx]
-        return {"text": text, "label": label}
+
+        return {"text": text}
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -30,29 +34,61 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def bert_embedding(
     model_name: str,
     texts: List[str],
-    labels: List[int]
-) -> Tuple[List[List[float]], List[int]]:
-    # model_name = get_meta_data()['BERT_MODEL_DIR']
+    # labels: List[int],
+    chunk_length: int,
+    num_seg: int,
+    ncores: Optional[int] = None
+) -> np.array:
+    """bert embedding inference
+
+    Args:
+        model_name (str): model name or local model path
+        texts (List[str]): text to embed
+        chunk_length (int): text chunk length
+        num_seg (int): number of segments to average over
+        ncores (Optional[int], optional): threads for mp. Defaults to None.
+
+    Returns:
+        np.array: embeddings as np.array with shape text_count x dim
+    """
+
     ft_model = AutoModelForSequenceClassification.from_pretrained(model_name).bert
     ft_model.to(device)
 
-    dataset = CustomDataset(texts, labels)
-    # Use DataLoader for batch processing
-    dataloader = DataLoader(dataset, batch_size=128, shuffle=False)
     # Load pre-trained BERT model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-    # model = BertModel.from_pretrained(model_name)
+
+    # mp for text seg
+    ncores = ncores if ncores is not None else mp.cpu_count()
+    params_lst = [(tokenizer, text, i, chunk_length, num_seg) for i, text in enumerate(texts)]
+    with mp.Pool(processes=ncores) as p:
+        out = p.starmap(text_segment, params_lst)
+
+    seg_texts = []
+    seg_ids = []
+    for e1, e2 in out:
+        seg_texts.extend(e1)
+        seg_ids.extend(e2)
+
+    dataset = CustomDataset(list(seg_texts))
+    # Use DataLoader for batch processing
+    dataloader = DataLoader(dataset, batch_size=128, shuffle=False)
 
     # Iterate through batches
     embeddings_lst = []
-    labels_lst = []
     for batch in dataloader:
         # Extract texts and labels from the batch
         texts_batch = batch["text"]
-        labels_batch = batch["label"]
+        # labels_batch = batch["label"]
 
         # Tokenize and pad the batch of sentences
-        inputs = tokenizer(texts_batch, return_tensors="pt", padding=True, truncation=True, max_length=512)
+        inputs = tokenizer(
+            texts_batch,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=512
+        )
         inputs.to(device)
 
         # Perform batched inference (modify this part based on your specific model)
@@ -62,12 +98,39 @@ def bert_embedding(
         last_hidden_state, pooler_output = outputs[0], outputs[1]
         cls_embedding = last_hidden_state[:, 0, :]
         if device.type == 'cuda':
-            embeddings_lst.extend(cls_embedding.cpu().tolist())
-        labels_lst.extend(labels_batch.tolist())
+            embeddings_lst.extend(cls_embedding.cpu().numpy())
 
-    return embeddings_lst, labels_lst
+    raw_embeddings = np.vstack(embeddings_lst)
+    embeddings = mean_embedding(raw_embeddings, seg_ids)
+
+    return embeddings
+
+
+def sbert_embedding(
+    model_name: str,
+    texts: List[str],
+):
+    model_name = get_meta_data()['SBERT_MODEL_DIR']
+    model = SentenceTransformer(model_name)
+
+    # model.encode(texts)
+    tokens = model.tokenize(texts)
+    token_ids = tokens['input_ids']
+    model.tokenize(['This is an example sentence'])
+    token = model.tokenize(["Each sentence's converted (except the first one)."])
+    token_ids = token['input_ids'][0]
+    text = model.tokenizer.decode(token_ids, skip_special_tokens=True)
+
+
+
 
 if __name__ == '__main__':
     texts, labels = make_input_data()
     model_path = get_meta_data()['BERT_MODEL_DIR']
-    embeddings, labels = bert_embedding(model_path, texts, labels)
+    test_embeddings = bert_embedding(
+        model_name=model_path,
+        texts=texts,
+        chunk_length=510,
+        num_seg=3
+    )
+

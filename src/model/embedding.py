@@ -2,7 +2,7 @@
 """
 import multiprocessing as mp
 from functools import reduce
-from typing import List, Optional
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -14,6 +14,7 @@ from src.meta_data import get_meta_data
 from src.model.model_data import make_input_data
 from src.model.utils import mean_embedding, text_segment
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class CustomDataset(Dataset):
     def __init__(self, texts):
@@ -28,23 +29,52 @@ class CustomDataset(Dataset):
         return {"text": text}
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# torch.cuda.empty_cache()
+def text_preprocessing(
+    tokenizer,
+    texts: List[str],
+    chunk_length: int,
+    num_seg: int,
+    ncores: int | None = None
+) -> Tuple[List[str], List[int]]:
+    """_summary_
+
+    Args:
+        tokenizer: tokenizer of the assoicated model
+        texts (List[str]): texts to embed
+        chunk_length (int): text chunk length
+        num_seg (int): number of segments to average over
+        ncores (Optional[int], optional): threads for mp. Defaults to None.
+
+    Returns:
+        Tuple[List[str], List[int]]: _description_
+    """
+    ncores = ncores if ncores is not None else mp.cpu_count()
+    params_lst = [(tokenizer, text, i, chunk_length, num_seg) for i, text in enumerate(texts)]
+    with mp.Pool(processes=ncores) as p:
+        out = p.starmap(text_segment, params_lst)
+
+    seg_texts = []
+    seg_ids = []
+    for e1, e2 in out:
+        seg_texts.extend(e1)
+        seg_ids.extend(e2)
+
+    return seg_texts, seg_ids
+
 
 def bert_embedding(
     model_name: str,
     texts: List[str],
-    # labels: List[int],
     chunk_length: int,
     num_seg: int,
-    ncores: Optional[int] = None,
+    ncores: int | None = None,
     embedding_type: str = 'cls'
 ) -> np.array:
     """bert embedding inference
 
     Args:
         model_name (str): model name or local model path
-        texts (List[str]): text to embed
+        texts (List[str]): texts to embed
         chunk_length (int): text chunk length
         num_seg (int): number of segments to average over
         ncores (Optional[int], optional): threads for mp. Defaults to None.
@@ -60,17 +90,13 @@ def bert_embedding(
     # Load pre-trained BERT model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
 
-    # mp for text seg
-    ncores = ncores if ncores is not None else mp.cpu_count()
-    params_lst = [(tokenizer, text, i, chunk_length, num_seg) for i, text in enumerate(texts)]
-    with mp.Pool(processes=ncores) as p:
-        out = p.starmap(text_segment, params_lst)
-
-    seg_texts = []
-    seg_ids = []
-    for e1, e2 in out:
-        seg_texts.extend(e1)
-        seg_ids.extend(e2)
+    seg_texts, seg_ids = text_preprocessing(
+        tokenizer=tokenizer,
+        texts=texts,
+        chunk_length=chunk_length,
+        num_seg=num_seg,
+        ncores=ncores
+    )
 
     dataset = CustomDataset(list(seg_texts))
     # Use DataLoader for batch processing
@@ -110,17 +136,26 @@ def bert_embedding(
 def sbert_embedding(
     model_name: str,
     texts: List[str],
-):
-    model_name = get_meta_data()['SBERT_MODEL_DIR']
+    chunk_length: int,
+    num_seg: int,
+    ncores: int | None = None
+) -> np.array:
     model = SentenceTransformer(model_name)
+    tokenizer = model.tokenizer
 
-    # model.encode(texts)
-    tokens = model.tokenize(texts)
-    token_ids = tokens['input_ids']
-    model.tokenize(['This is an example sentence'])
-    token = model.tokenize(["Each sentence's converted (except the first one)."])
-    token_ids = token['input_ids'][0]
-    text = model.tokenizer.decode(token_ids, skip_special_tokens=True)
+    seg_texts, seg_ids = text_preprocessing(
+        tokenizer=tokenizer,
+        texts=texts,
+        chunk_length=chunk_length,
+        num_seg=num_seg,
+        ncores=ncores
+    )
+
+    # cpu for inference
+    raw_embeddings = model.encode(seg_texts)
+    embeddings = mean_embedding(raw_embeddings, seg_ids)
+
+    return embeddings
 
 
 if __name__ == '__main__':

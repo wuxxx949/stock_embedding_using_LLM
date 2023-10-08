@@ -74,12 +74,10 @@ def bert_embedding(
     # Use DataLoader for batch processing
     dataloader = DataLoader(dataset, batch_size=128, shuffle=False)
 
-    # Iterate through batches
     embeddings_lst = []
     for batch in dataloader:
         # Extract texts and labels from the batch
         texts_batch = batch["text"]
-        # labels_batch = batch["label"]
 
         # Tokenize and pad the batch of sentences
         inputs = tokenizer(
@@ -91,9 +89,7 @@ def bert_embedding(
         )
         inputs.to(device)
 
-        # Perform batched inference (modify this part based on your specific model)
         with torch.no_grad():
-            # Assuming model is an instance of your BERT model
             outputs = ft_model(**inputs)
         last_hidden_state, pooler_output = outputs[0], outputs[1]
         cls_embedding = last_hidden_state[:, 0, :]

@@ -2,7 +2,6 @@ import os
 import re
 from typing import Dict, List, Tuple
 
-import numpy as np
 import pandas as pd
 
 from src.meta_data import get_meta_data

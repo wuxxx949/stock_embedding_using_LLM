@@ -1,12 +1,9 @@
 from typing import List, Tuple
 
 import numpy as np
-from transformers import AutoTokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 from transformers.models.mpnet.tokenization_mpnet_fast import \
     MPNetTokenizerFast
-
-from src.model.model_data import make_input_data
 
 
 def text_segment(

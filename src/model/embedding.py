@@ -11,7 +11,6 @@ from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from src.meta_data import get_meta_data
-from src.model.model_data import make_input_data
 from src.model.utils import mean_embedding, text_segment
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -159,7 +158,9 @@ def sbert_embedding(
 
 
 if __name__ == '__main__':
-    texts, labels = make_input_data()
+    from src.model.model_data import make_input_data
+
+    texts, labels, _ = make_input_data()
     model_path = get_meta_data()['BERT_MODEL_DIR']
     test_embeddings = bert_embedding(
         model_name=model_path,

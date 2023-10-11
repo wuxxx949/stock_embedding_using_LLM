@@ -20,7 +20,7 @@ def prepare_data() -> List[InputExample]:
     Returns:
         List[InputExample]: training examples
     """
-    texts, labels = make_input_data()
+    texts, labels, _ = make_input_data()
     paired_data = list(zip(texts, labels))
     output = []
     for i in range(len(texts)):

@@ -55,7 +55,7 @@ def fine_tune_bert(
     """
     checkpoint = 'bert-base-uncased'
     tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-    texts, labels = make_input_data()
+    texts, labels, _ = make_input_data()
 
     if 0 < test_size < 1:
         train_texts, val_texts, train_labels, val_labels = \

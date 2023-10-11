@@ -6,7 +6,6 @@ from sklearn.model_selection import train_test_split
 from src.model.metrics import classification_metrics
 
 
-
 def model_eval(
     X: np.array,
     y: np.array,
@@ -49,17 +48,25 @@ def model_eval(
 
 if __name__ == '__main__':
     from src.meta_data import get_meta_data
-    from src.model.embedding import bert_embedding
+    from src.model.embedding import bert_embedding, sbert_embedding
     from src.model.model_data import make_input_data
 
 
-    texts, labels = make_input_data()
-    model_path = get_meta_data()['BERT_MODEL_DIR']
+    texts, labels, _ = make_input_data()
     embeddings = bert_embedding(
-        model_name=model_path,
+        model_name=get_meta_data()['BERT_MODEL_DIR'],
         texts=texts,
         chunk_length=510,
         num_seg=3
     )
 
     model_result = model_eval(X=embeddings, y=labels)
+
+    sbert_embeddings = sbert_embedding(
+        model_name=get_meta_data()['SBERT_MODEL_DIR'],
+        texts=texts,
+        chunk_length=382,
+        num_seg=3
+    )
+
+    model_result = model_eval(X=sbert_embeddings, y=labels, C=6.0)

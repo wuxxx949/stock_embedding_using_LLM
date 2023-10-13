@@ -1,13 +1,14 @@
 import os
+import re
 import sqlite3
+from sqlite3 import Connection
 
 import pandas as pd
 
+from src.data.db.queries import CREATE_BUSINESS_DESC_QUERY
 from src.meta_data import get_meta_data
 from src.model.embedding import bert_embedding, sbert_embedding
-from src.model.model_data import (gics_code_to_string, make_gics_look_up,
-                                  make_input_data)
-from src.data.db.queries import CREATE_BUSINESS_DESC_QUERY
+from src.model.model_data import filter_files, make_input_data
 
 
 def create_embedding_table_query(tbl_name: str, length: int) -> str:
@@ -30,7 +31,7 @@ def create_embedding_table_query(tbl_name: str, length: int) -> str:
     return first_line + col_def + last_line
 
 
-def upload_bert_embedding(conn: sqlite3.Connection, num_seg: int) -> None:
+def upload_bert_embedding(conn: Connection, num_seg: int) -> None:
     """upload bert embeddings to local db
 
     Args:
@@ -52,6 +53,19 @@ def upload_bert_embedding(conn: sqlite3.Connection, num_seg: int) -> None:
     embedding_df.to_sql(tbl_name, conn, index=False, if_exists='replace')
 
 
+def upload_business_desc(conn: Connection) -> None:
+    business_desc = []
+    tickers = []
+    for fpath in filter_files(10):
+        with open (fpath, 'r', encoding='utf8') as f:
+            business_desc.append(f.read().replace('\n', ''))
+            ticker = re.search(r'[^a-z]([a-z]+).txt', fpath).group(1)
+            tickers.append(ticker)
+
+    desc_df = pd.DataFrame({'ticker': tickers, 'business': business_desc})
+    desc_df.to_sql('business_desc', conn, index=False, if_exists='replace')
+
+
 
 if __name__ == '__main__':
     db_dir = os.path.dirname(os.path.realpath(__file__))
@@ -61,5 +75,6 @@ if __name__ == '__main__':
     conn.execute(tbl_def)
     conn.execute(CREATE_BUSINESS_DESC_QUERY)
 
+    upload_business_desc(conn)
     upload_bert_embedding(conn, num_seg=3)
 

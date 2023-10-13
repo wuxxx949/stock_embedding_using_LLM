@@ -1,0 +1,6 @@
+CREATE_BUSINESS_DESC_QUERY = """
+CREATE TABLE IF NOT EXISTS business_desc (
+    ticker TEXT PRIMARY KEY,
+    business TEXT NOT NULL
+);
+"""

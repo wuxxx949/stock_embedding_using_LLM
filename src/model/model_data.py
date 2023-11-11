@@ -90,7 +90,7 @@ def make_input_data(
     for fpath in filter_files(10):
         with open (fpath, 'r', encoding='utf8') as f:
             texts.append(f.read().replace('\n', ''))
-            ticker = re.search(r'[^a-z]([a-z]+).txt', fpath).group(1)
+            ticker = re.search(r'\/([a-z-]+).txt', fpath).group(1)
             gics.append(gics_mapping[ticker])
             tickers.append(ticker)
 

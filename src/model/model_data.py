@@ -29,7 +29,8 @@ def fetch_tickers() -> List[str]:
     tickers = []
     for fpath in filter_files(10):
         with open (fpath, 'r', encoding='utf8') as f:
-            tickers.append(re.search(r'[^a-z]([a-z]+).txt', fpath).group(1))
+            ticker = re.search(r'\/([a-z-]+).txt', fpath).group(1)
+            tickers.append(ticker.replace('-', '.'))
 
     return tickers
 
@@ -60,8 +61,8 @@ def make_gics_look_up(
         names=['ticker', 'gics'],
         dtype={'ticker': str, 'gics': str}
         )
-
-    gics_df = gics_df[gics_df['ticker'].str.lower().isin(tickers)]
+    gics_df['ticker'] = gics_df['ticker'].str.lower().str.replace('/', '.')
+    gics_df = gics_df[gics_df['ticker'].isin(tickers)]
 
     gics_df['industry'] = gics_df['gics'].apply(lambda x: x[:digit_pos])
     int_mapping = dict(enumerate(set(gics_df['industry'])))
@@ -91,7 +92,7 @@ def make_input_data(
         with open (fpath, 'r', encoding='utf8') as f:
             texts.append(f.read().replace('\n', ''))
             ticker = re.search(r'\/([a-z-]+).txt', fpath).group(1)
-            gics.append(gics_mapping[ticker])
+            gics.append(gics_mapping[ticker.replace('-', '.')])
             tickers.append(ticker)
 
     assert len(texts) == len(gics), 'text and ticker length are inconsistent'

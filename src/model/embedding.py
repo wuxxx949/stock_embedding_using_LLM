@@ -1,7 +1,7 @@
 """make embedings for fine-tuned models
 """
+import logging
 import multiprocessing as mp
-from functools import reduce
 from typing import List, Tuple
 
 import numpy as np
@@ -13,6 +13,8 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from src.meta_data import get_meta_data
 from src.model.utils import mean_embedding, text_segment
 
+# disable maximum token length warning
+logging.getLogger('transformers.tokenization_utils_base').setLevel(logging.ERROR)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class CustomDataset(Dataset):

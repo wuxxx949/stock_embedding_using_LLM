@@ -113,7 +113,7 @@ def upload_business_desc(conn: Connection) -> None:
     for fpath in filter_files(10):
         with open (fpath, 'r', encoding='utf8') as f:
             business_desc.append(f.read().replace('\n', ''))
-            ticker = re.search(r'[^a-z]([a-z]+).txt', fpath).group(1)
+            ticker = re.search(r'\/([a-z-]+).txt', fpath).group(1)
             tickers.append(ticker)
 
     desc_df = pd.DataFrame({'ticker': tickers, 'business': business_desc})
@@ -129,8 +129,18 @@ def upload_prob(
     C: float,
     seed: int = 42
     ) -> None:
+    """popluate gics probs for database
 
-    tbl_name = f'{model_type}_{chunk_length * num_seg}_prob'
+    Args:
+        conn (Connection): db connection
+        model_type (str): language model name
+        gics_type (str): industry, industry_group, or sector
+        chunk_length (int): max token for a single chunk
+        num_seg (int): max token length multiples
+        C (float): Inverse of regularization strength of LogisticRegression
+        seed (int, optional): seed for LogisticRegression. Defaults to 42.
+    """
+    tbl_name = f'{model_type}_{gics_type}_{chunk_length * num_seg}_prob'
     conn.execute(create_prob_table_def(tbl_name))
 
     model = LogisticRegression(
@@ -176,6 +186,16 @@ if __name__ == '__main__':
         num_seg=3,
         C=0.05
     )
+
+    upload_prob(
+        conn,
+        model_type='bert',
+        gics_type='sector',
+        chunk_length=512,
+        num_seg=3,
+        C=0.05
+    )
+
 
     tbl_def = create_embedding_table_def('bert_embedding_1536', length=768)
     conn.execute(tbl_def)

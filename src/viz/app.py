@@ -6,7 +6,6 @@ import pandas as pd
 from dash import dcc, html
 from dash.dependencies import Input, Output
 from sqlalchemy import create_engine
-import plotly.graph_objects as go
 
 # Connect to your local database
 db_path = os.path.join(files('src'), 'data/db/dash.db')
@@ -16,6 +15,9 @@ db_engine = create_engine(f'sqlite:///{db_path}')
 description_df = pd.read_sql_table('business_desc', con=db_engine) \
     .sort_values('ticker')
 industry_prob_df = pd.read_sql_table('bert_industry_1536_prob', con=db_engine) \
+    .sort_values(['ticker', 'prob'], ascending=True)
+
+sector_prob_df = pd.read_sql_table('bert_sector_1536_prob', con=db_engine) \
     .sort_values(['ticker', 'prob'], ascending=True)
 
 # Initialize the Dash app
@@ -33,6 +35,7 @@ app.layout = html.Div([
             "Select Industry or Sector:",
             style={'font-weight': 'bold', 'width': '25%', 'display': 'inline-block'}),
         ]),
+
     # Dropdown to select a company ticker
     html.Div([
         dcc.Dropdown(
@@ -70,18 +73,23 @@ app.layout = html.Div([
 @app.callback(
     [Output('company-description', 'children'),
      Output('industry-chart', 'figure')],
-    [Input('ticker-dropdown', 'value')]
+    [Input('ticker-dropdown', 'value'),
+     Input('industry-sector-dropdown', 'value')]
 )
-def update_company_info(selected_ticker):
+def update_company_info(selected_ticker: str, gics_type: str):
     # Filter data based on selected ticker
     selected_desc = description_df[description_df['ticker'] == selected_ticker]['business'].values[0]
     selected_desc = ' '.join(selected_desc.split(' ')[: 2000]) + '...'
-    selected_classification = industry_prob_df[industry_prob_df['ticker'] == selected_ticker]
+
+    if gics_type == 'industry':
+        selected_classification = industry_prob_df[industry_prob_df['ticker'] == selected_ticker]
+    else:
+        selected_classification = sector_prob_df[sector_prob_df['ticker'] == selected_ticker]
 
     # Create a bar chart
     figure = {
         'data': [
-            {'y': selected_classification['industry'],
+            {'y': selected_classification[gics_type],
              'x': selected_classification['prob'],
              'type': 'bar',
              'orientation': 'h',

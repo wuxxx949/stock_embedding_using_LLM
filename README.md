@@ -18,7 +18,9 @@ A simple Dash dashboard is made to demonstrate multiple GICS industries or secto
 I created a SQLite database, which stores company descriptions and embeddings.
 To run the app locally, follow these steps:
 
+* Clone the repo. It contains a large SQLite db file, so it can take some time.
 * Install packages in a virtual environment based on `requirements.txt`.
+* Activate venv.
 * cd to `src/viz` and run `python app.py`.
 * Open a browser and use `http://127.0.0.1:8050/` to access the dashboard.
 

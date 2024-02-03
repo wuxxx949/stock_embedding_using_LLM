@@ -19,8 +19,6 @@ I created a SQLite database, which stores company descriptions and embeddings.
 To run the app locally, follow these steps:
 
 * Install packages in a virtual environment based on `requirements.txt`.
-* Download the database [here](https://drive.google.com/file/d/1UBqvsuep2HvM7BAGkwB23zKvIjoaaVkN/view).
-* Move `dash.db` to `src/data/db/`.
 * cd to `src/viz` and run `python app.py`.
 * Open a browser and use `http://127.0.0.1:8050/` to access the dashboard.
 
@@ -28,7 +26,10 @@ To run the app locally, follow these steps:
 # How to Reproduce the Results
 * add following environment variables
     * `SEC_DIR`: directory for storing company descriptions as text file.
-    * `BERT_MODEL_DIR`: direcotry for storing fine-tuned Bert model
-    * `BERT_MODEL_DIR`: direcotry for storing fine-tuned Sentence Bert model
-* More to come...
+    * `BERT_MODEL_DIR`: direcotry for storing fine-tuned Bert model.
+    * `BERT_MODEL_DIR`: direcotry for storing fine-tuned Sentence Bert model.
+* Activate venv.
+* SEC data scraping: `python src/data/sec_data/fetch_submission.py`. If you encounter errro due to unstable network, simply rerun the script until all the companies are fetched.
+* Fine tune bert model `python src/model/fine_tune/bert_fine_tune.py`.
+* Creat local sqlite database `python src/data/db/local_db.py.`
 

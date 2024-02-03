@@ -9,5 +9,6 @@
 !*.png
 !requirements*.txt
 !*.sh
+!*.db
 
 venv/*

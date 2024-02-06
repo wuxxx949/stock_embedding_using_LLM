@@ -1,5 +1,4 @@
 import os
-from importlib.resources import files
 
 import dash
 import pandas as pd
@@ -8,7 +7,7 @@ from dash.dependencies import Input, Output
 from sqlalchemy import create_engine
 
 # Connect to your local database
-db_path = os.path.join(files('src'), 'data/db/dash.db')
+db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data/db/dash.db')
 db_engine = create_engine(f'sqlite:///{db_path}')
 
 # Load data from the database
